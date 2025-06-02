@@ -23,6 +23,7 @@ Example:
 ![](imgs/iterm2.gif)
 
 
+You can also set shortcut to use it.
 
 ### Open VS Code
 
