@@ -4,23 +4,87 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (例如: v1.0.0)'
+        required: true
+        default: 'v1.0.0'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    name: 构建 Alfred Workflow
 
     steps:
-      - uses: actions/checkout@v3
+      - name: 检出代码
+        uses: actions/checkout@v4
 
-      - name: Build Alfred workflow
+      - name: 获取版本信息
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "tag_name=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 构建 Alfred Workflow
         id: builder
         uses: almibarss/build-alfred-workflow@v1
         with:
           workflow_dir: ./
-          exclude_patterns: '*.pyc *__pycache__/*'
-          custom_version: ${{ github.ref_name }}
+          exclude_patterns: |
+            *.pyc
+            *__pycache__/*
+            .git/*
+            .github/*
+            *.md
+            .DS_Store
+            .gitignore
+            imgs/*
+          custom_version: ${{ steps.version.outputs.version }}
 
-      - name: Release
+      - name: 重命名工作流文件
+        run: |
+          mv "${{ steps.builder.outputs.workflow_file }}" "iTerm-VSCode-Cursor-${{ steps.version.outputs.version }}.alfredworkflow"
+
+      - name: 创建发布
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ steps.builder.outputs.workflow_file }}
+          tag_name: ${{ steps.version.outputs.tag_name }}
+          name: "iTerm & VSCode & Cursor ${{ steps.version.outputs.version }}"
+          body: |
+            ## 📦 Alfred Workflow - iTerm & VSCode & Cursor ${{ steps.version.outputs.version }}
+            
+            ### 🚀 新功能
+            - 在 Finder 当前文件夹中打开 iTerm2
+            - 在 Finder 当前文件夹中打开 VSCode  
+            - 在 Finder 当前文件夹中打开 Cursor
+            
+            ### 📋 安装说明
+            1. 下载 `.alfredworkflow` 文件
+            2. 双击文件进行安装
+            3. 在 Alfred 中使用以下关键词：
+               - `终端` - 打开 iTerm2
+               - `open Terminal in current folder` - 打开 iTerm2
+               - 其他快捷命令请查看工作流设置
+            
+            ### 🔧 系统要求
+            - macOS
+            - Alfred 4+ (推荐 Alfred 5)
+            - iTerm2 (可选)
+            - VSCode (可选)  
+            - Cursor (可选)
+          files: |
+            iTerm-VSCode-Cursor-${{ steps.version.outputs.version }}.alfredworkflow
+          draft: false
+          prerelease: false
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v3
+        with:
+          name: alfred-workflow-${{ steps.version.outputs.version }}
+          path: iTerm-VSCode-Cursor-${{ steps.version.outputs.version }}.alfredworkflow
