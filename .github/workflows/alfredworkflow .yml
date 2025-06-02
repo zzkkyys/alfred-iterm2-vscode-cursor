@@ -84,7 +84,7 @@ jobs:
           prerelease: false
 
       - name: 上传构建产物
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: alfred-workflow-${{ steps.version.outputs.version }}
           path: iTerm-VSCode-Cursor-${{ steps.version.outputs.version }}.alfredworkflow
